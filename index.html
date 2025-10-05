@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stereo Signal Generator</title>
+  <style>
+    body { font-family: sans-serif; padding: 10px; max-width: 400px; margin: auto; }
+    label, input, button { display: block; margin: 10px 0; width: 100%; }
+    input[type="number"] { width: 100%; }
+  </style>
+</head>
+<body>
+  <h2>Stereo Signal Generator</h2>
+
+  <label>Left Frequency (Hz)</label>
+  <input type="number" id="freqL" value="440" min="20" max="20000">
+
+  <label>Right Frequency (Hz)</label>
+  <input type="number" id="freqR" value="440" min="20" max="20000">
+
+  <label><input type="checkbox" id="lockFreq"> Lock Frequencies</label>
+
+  <label>Phase Shift (°)</label>
+  <input type="number" id="phaseShift" value="0" min="0" max="360">
+
+  <label>Volume Ratio (L/R)</label>
+  <input type="range" id="volumeRatio" min="0" max="1" step="0.01" value="0.5">
+
+  <button id="startBtn">Start</button>
+  <button id="stopBtn">Stop</button>
+
+  <script>
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    let oscL, oscR, gainL, gainR, merger;
+
+    function startOscillators() {
+      oscL = ctx.createOscillator();
+      oscR = ctx.createOscillator();
+      gainL = ctx.createGain();
+      gainR = ctx.createGain();
+      merger = ctx.createChannelMerger(2);
+
+      const freqL = parseFloat(document.getElementById('freqL').value);
+      const freqR = parseFloat(document.getElementById('freqR').value);
+      const phaseDeg = parseFloat(document.getElementById('phaseShift').value);
+      const phaseSec = phaseDeg / 360 / freqR;
+      const ratio = parseFloat(document.getElementById('volumeRatio').value);
+
+      oscL.frequency.value = freqL;
+      oscR.frequency.value = freqR;
+
+      gainL.gain.value = ratio;
+      gainR.gain.value = 1 - ratio;
+
+      oscL.connect(gainL).connect(merger, 0, 0); // Left
+      oscR.connect(gainR).connect(merger, 0, 1); // Right
+      merger.connect(ctx.destination);
+
+      oscL.start();
+      oscR.start(ctx.currentTime + phaseSec);
+    }
+
+    function stopOscillators() {
+      oscL?.stop();
+      oscR?.stop();
+    }
+
+    document.getElementById('startBtn').onclick = startOscillators;
+    document.getElementById('stopBtn').onclick = stopOscillators;
+
+    document.getElementById('lockFreq').onchange = (e) => {
+      if (e.target.checked) {
+        document.getElementById('freqR').disabled = true;
+        document.getElementById('freqR').value = document.getElementById('freqL').value;
+      } else {
+        document.getElementById('freqR').disabled = false;
+      }
+    };
+
+    document.getElementById('freqL').oninput = () => {
+      if (document.getElementById('lockFreq').checked) {
+        document.getElementById('freqR').value = document.getElementById('freqL').value;
+      }
+    };
+  </script>
+</body>
+</html>
