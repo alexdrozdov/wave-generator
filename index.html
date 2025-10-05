@@ -1,87 +1,122 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stereo Signal Generator</title>
   <style>
     body { font-family: sans-serif; padding: 10px; max-width: 400px; margin: auto; }
-    label, input, button { display: block; margin: 10px 0; width: 100%; }
-    input[type="number"] { width: 100%; }
+    .row { margin: 15px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+    .control-group { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+    input[type="number"] { width: 60px; text-align: center; }
+    button { padding: 10px; min-width: 50px; font-size: 16px; }
+    #startStopBtn { width: 100%; padding: 15px; font-size: 18px; }
   </style>
 </head>
 <body>
   <h2>Stereo Signal Generator</h2>
 
-  <label>Left Frequency (Hz)</label>
-  <input type="number" id="freqL" value="440" min="20" max="20000">
+  <!-- Frequency Row -->
+  <div class="row">
+    <label>Frequency</label>
+    <div class="control-group">
+      <div>
+        <button onclick="adjust('freqL', -10)">-10</button>
+        <button onclick="adjust('freqL', -1)">-1</button>
+        <input type="number" id="freqL" value="100" min="20" max="300">
+        <button onclick="adjust('freqL', 1)">+1</button>
+        <button onclick="adjust('freqL', 10)">+10</button>
+      </div>
+      <div>
+        <button onclick="adjust('freqR', -10)">-10</button>
+        <button onclick="adjust('freqR', -1)">-1</button>
+        <input type="number" id="freqR" value="100" min="20" max="300">
+        <button onclick="adjust('freqR', 1)">+1</button>
+        <button onclick="adjust('freqR', 10)">+10</button>
+      </div>
+    </div>
+  </div>
 
-  <label>Right Frequency (Hz)</label>
-  <input type="number" id="freqR" value="440" min="20" max="20000">
+  <!-- Lock Frequencies -->
+  <div class="row">
+    <label><input type="checkbox" id="lockFreq"> Lock Frequencies</label>
+  </div>
 
-  <label><input type="checkbox" id="lockFreq"> Lock Frequencies</label>
+  <!-- Phase Shift -->
+  <div class="row">
+    <label>Phase Shift (°)</label>
+    <div class="control-group">
+      <button onclick="adjust('phaseShift', -10)">-10</button>
+      <button onclick="adjust('phaseShift', -1)">-1</button>
+      <input type="number" id="phaseShift" value="0" min="-180" max="180">
+      <button onclick="adjust('phaseShift', 1)">+1</button>
+      <button onclick="adjust('phaseShift', 10)">+10</button>
+    </div>
+  </div>
 
-  <label>Phase Shift (°)</label>
-  <input type="number" id="phaseShift" value="0" min="0" max="360">
+  <!-- Balance -->
+  <div class="row">
+    <label>Balance (L/R)</label>
+    <input type="range" id="balance" min="0" max="1" step="0.01" value="0.5">
+  </div>
 
-  <label>Volume Ratio (L/R)</label>
-  <input type="range" id="volumeRatio" min="0" max="1" step="0.01" value="0.5">
-
-  <button id="startBtn">Start</button>
-  <button id="stopBtn">Stop</button>
+  <!-- Start/Stop -->
+  <div class="row">
+    <button id="startStopBtn" onclick="toggleOscillators()">Start</button>
+  </div>
 
   <script>
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     let oscL, oscR, gainL, gainR, merger;
+    let isRunning = false;
 
-    function startOscillators() {
+    function adjust(id, delta) {
+      const input = document.getElementById(id);
+      let value = parseFloat(input.value) + delta;
+      const min = parseFloat(input.min);
+      const max = parseFloat(input.max);
+      input.value = Math.min(max, Math.max(min, value));
+      if (id === 'freqL' && document.getElementById('lockFreq').checked) {
+        document.getElementById('freqR').value = input.value;
+      }
+    }
+
+    function toggleOscillators() {
+      if (isRunning) {
+        oscL?.stop();
+        oscR?.stop();
+        isRunning = false;
+        document.getElementById('startStopBtn').textContent = 'Start';
+        return;
+      }
+
+      const freqL = parseFloat(document.getElementById('freqL').value);
+      const freqR = parseFloat(document.getElementById('freqR').value);
+      const phaseDeg = parseFloat(document.getElementById('phaseShift').value);
+      const phaseSec = phaseDeg / 360 / freqR;
+      const balance = parseFloat(document.getElementById('balance').value);
+
       oscL = ctx.createOscillator();
       oscR = ctx.createOscillator();
       gainL = ctx.createGain();
       gainR = ctx.createGain();
       merger = ctx.createChannelMerger(2);
 
-      const freqL = parseFloat(document.getElementById('freqL').value);
-      const freqR = parseFloat(document.getElementById('freqR').value);
-      const phaseDeg = parseFloat(document.getElementById('phaseShift').value);
-      const phaseSec = phaseDeg / 360 / freqR;
-      const ratio = parseFloat(document.getElementById('volumeRatio').value);
-
       oscL.frequency.value = freqL;
       oscR.frequency.value = freqR;
 
-      gainL.gain.value = ratio;
-      gainR.gain.value = 1 - ratio;
+      gainL.gain.value = balance;
+      gainR.gain.value = 1 - balance;
 
-      oscL.connect(gainL).connect(merger, 0, 0); // Left
-      oscR.connect(gainR).connect(merger, 0, 1); // Right
+      oscL.connect(gainL).connect(merger, 0, 0);
+      oscR.connect(gainR).connect(merger, 0, 1);
       merger.connect(ctx.destination);
 
       oscL.start();
       oscR.start(ctx.currentTime + phaseSec);
+
+      isRunning = true;
+      document.getElementById('startStopBtn').textContent = 'Stop';
     }
-
-    function stopOscillators() {
-      oscL?.stop();
-      oscR?.stop();
-    }
-
-    document.getElementById('startBtn').onclick = startOscillators;
-    document.getElementById('stopBtn').onclick = stopOscillators;
-
-    document.getElementById('lockFreq').onchange = (e) => {
-      if (e.target.checked) {
-        document.getElementById('freqR').disabled = true;
-        document.getElementById('freqR').value = document.getElementById('freqL').value;
-      } else {
-        document.getElementById('freqR').disabled = false;
-      }
-    };
-
-    document.getElementById('freqL').oninput = () => {
-      if (document.getElementById('lockFreq').checked) {
-        document.getElementById('freqR').value = document.getElementById('freqL').value;
-      }
-    };
   </script>
 </body>
 </html>
