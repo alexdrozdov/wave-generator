@@ -4,12 +4,93 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Stereo Signal Generator</title>
   <style>
-    body { font-family: sans-serif; padding: 10px; max-width: 400px; margin: auto; }
-    .row { margin: 15px 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-    .control-group { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
-    input[type="number"] { width: 60px; text-align: center; }
-    button { padding: 10px; min-width: 50px; font-size: 16px; }
-    #startStopBtn { width: 100%; padding: 15px; font-size: 18px; }
+    body {
+      background-color: #111;
+      color: #ccc;
+      font-family: sans-serif;
+      padding: 10px;
+      max-width: 400px;
+      margin: auto;
+    }
+
+    h2 {
+      text-align: center;
+      color: #eee;
+    }
+
+    .row {
+      margin: 15px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .control-group {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 5px;
+    }
+
+    button {
+      background-color: #ff0;
+      border: 2px solid #aa0;
+      border-radius: 8px;
+      padding: 10px;
+      min-width: 50px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #000;
+      box-shadow: inset 0 -2px 0 #880;
+    }
+
+    button:active {
+      box-shadow: inset 0 2px 4px #660;
+    }
+
+    input[type="number"] {
+      background-color: #333;
+      color: #eee;
+      border: 2px solid #666;
+      border-radius: 6px;
+      width: 60px;
+      text-align: center;
+      font-family: monospace;
+      font-size: 20px;
+      padding: 5px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin-top: 5px;
+    }
+
+    label {
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+
+    #startStopBtn {
+      background-color: #f60;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 15px;
+      font-size: 18px;
+      font-weight: bold;
+      width: 100%;
+    }
+
+    #startStopBtn.running {
+      background-color: #90f;
+    }
+
+    /* Reserved inactive style */
+    .inactive {
+      opacity: 0.4;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -26,7 +107,7 @@
         <button onclick="adjust('freqL', 1)">+1</button>
         <button onclick="adjust('freqL', 10)">+10</button>
       </div>
-      <div>
+      <div id="freqRGroup">
         <button onclick="adjust('freqR', -10)">-10</button>
         <button onclick="adjust('freqR', -1)">-1</button>
         <input type="number" id="freqR" value="100" min="20" max="300">
@@ -42,7 +123,7 @@
   </div>
 
   <!-- Phase Shift -->
-  <div class="row">
+  <div class="row" id="phaseRow">
     <label>Phase Shift (°)</label>
     <div class="control-group">
       <button onclick="adjust('phaseShift', -10)">-10</button>
@@ -75,9 +156,12 @@
       const min = parseFloat(input.min);
       const max = parseFloat(input.max);
       input.value = Math.min(max, Math.max(min, value));
+
       if (id === 'freqL' && document.getElementById('lockFreq').checked) {
         document.getElementById('freqR').value = input.value;
       }
+
+      updateInactiveStates();
     }
 
     function toggleOscillators() {
@@ -86,6 +170,7 @@
         oscR?.stop();
         isRunning = false;
         document.getElementById('startStopBtn').textContent = 'Start';
+        document.getElementById('startStopBtn').classList.remove('running');
         return;
       }
 
@@ -116,6 +201,32 @@
 
       isRunning = true;
       document.getElementById('startStopBtn').textContent = 'Stop';
+      document.getElementById('startStopBtn').classList.add('running');
+
+      if ('vibrate' in navigator) navigator.vibrate([30]);
+    }
+
+    document.getElementById('lockFreq').onchange = (e) => {
+      const locked = e.target.checked;
+      const freqRGroup = document.getElementById('freqRGroup');
+      if (locked) {
+        document.getElementById('freqR').value = document.getElementById('freqL').value;
+        freqRGroup.classList.add('inactive');
+      } else {
+        freqRGroup.classList.remove('inactive');
+      }
+      updateInactiveStates();
+    };
+
+    function updateInactiveStates() {
+      const freqL = parseFloat(document.getElementById('freqL').value);
+      const freqR = parseFloat(document.getElementById('freqR').value);
+      const phaseRow = document.getElementById('phaseRow');
+      if (freqL !== freqR) {
+        phaseRow.classList.add('inactive');
+      } else {
+        phaseRow.classList.remove('inactive');
+      }
     }
   </script>
 </body>
