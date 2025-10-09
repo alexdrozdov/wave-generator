@@ -91,6 +91,41 @@
       opacity: 0.4;
       pointer-events: none;
     }
+
+    .modal {
+      display: none; /* hidden by default */
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.7);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background-color: #222;
+      color: #eee;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 300px;
+      text-align: center;
+      box-shadow: 0 0 10px #000;
+    }
+
+    .modal-actions {
+      margin-top: 15px;
+    }
+
+    .modal-content button {
+      background-color: #f60;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-weight: bold;
+      color: #fff;
+    }
+
   </style>
 </head>
 <body>
@@ -145,10 +180,32 @@
     <button id="startStopBtn" onclick="toggleOscillators()">Start</button>
   </div>
 
+  
+  <!-- Safety Modal -->
+  <div id="safetyModal" class="modal">
+    <div class="modal-content">
+      <h3>⚠️ Warning</h3>
+      <p>The generator will run at full volume. Please be cautious — it can be loud.</p>
+      <label>
+        <input type="checkbox" id="suppressWarning"> Don’t show again this session
+      </label>
+      <div class="modal-actions">
+        <button id="continueBtn">Continue</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    let oscL, oscR, gainL, gainR, merger;
+    let oscL, oscR, gainL, gainR, merger, delayR;
     let isRunning = false;
+
+    // Safety modal logic
+    const modal = document.getElementById('safetyModal');
+    const continueBtn = document.getElementById('continueBtn');
+    const suppressCheckbox = document.getElementById('suppressWarning');
+
+    let pendingStart = false;
 
     function adjust(id, delta) {
       const input = document.getElementById(id);
@@ -160,11 +217,24 @@
       if (id === 'freqL' && document.getElementById('lockFreq').checked) {
         document.getElementById('freqR').value = input.value;
       }
-
+      updateAudioParams();
       updateInactiveStates();
     }
 
     function toggleOscillators() {
+      if (!isRunning) {
+        // First run safety check
+        if (!sessionStorage.getItem('suppressWarning')) {
+          modal.style.display = 'flex';
+          pendingStart = true;
+          return;
+        }
+      }
+
+      startOrStop();
+    }
+
+    function startOrStop() {
       if (isRunning) {
         oscL?.stop();
         oscR?.stop();
@@ -174,36 +244,67 @@
         return;
       }
 
-      const freqL = parseFloat(document.getElementById('freqL').value);
-      const freqR = parseFloat(document.getElementById('freqR').value);
-      const phaseDeg = parseFloat(document.getElementById('phaseShift').value);
-      const phaseSec = phaseDeg / 360 / freqR;
-      const balance = parseFloat(document.getElementById('balance').value);
-
+      // Create nodes
       oscL = ctx.createOscillator();
       oscR = ctx.createOscillator();
       gainL = ctx.createGain();
       gainR = ctx.createGain();
+      delayR = ctx.createDelay(1.0); // up to 1 second delay
       merger = ctx.createChannelMerger(2);
 
-      oscL.frequency.value = freqL;
-      oscR.frequency.value = freqR;
+      // Initial values
+      updateAudioParams(true);
 
-      gainL.gain.value = balance;
-      gainR.gain.value = 1 - balance;
-
+      // Routing
       oscL.connect(gainL).connect(merger, 0, 0);
-      oscR.connect(gainR).connect(merger, 0, 1);
+      oscR.connect(gainR).connect(delayR).connect(merger, 0, 1);
       merger.connect(ctx.destination);
 
       oscL.start();
-      oscR.start(ctx.currentTime + phaseSec);
+      oscR.start();
 
       isRunning = true;
       document.getElementById('startStopBtn').textContent = 'Stop';
       document.getElementById('startStopBtn').classList.add('running');
 
       if ('vibrate' in navigator) navigator.vibrate([30]);
+    }
+
+    // Modal continue button
+    continueBtn.onclick = () => {
+      if (suppressCheckbox.checked) {
+        sessionStorage.setItem('suppressWarning', 'true');
+      }
+      modal.style.display = 'none';
+      if (pendingStart) {
+        startOrStop();
+        pendingStart = false;
+      }
+    };
+
+    function updateAudioParams(initial = false) {
+      if (!isRunning && !initial) return;
+
+      const freqL = parseFloat(document.getElementById('freqL').value);
+      const freqR = parseFloat(document.getElementById('freqR').value);
+      const phaseDeg = parseFloat(document.getElementById('phaseShift').value);
+      const balance = parseFloat(document.getElementById('balance').value);
+
+      if (oscL) oscL.frequency.setValueAtTime(freqL, ctx.currentTime);
+      if (oscR) oscR.frequency.setValueAtTime(freqR, ctx.currentTime);
+
+      if (gainL) gainL.gain.setValueAtTime(balance, ctx.currentTime);
+      if (gainR) gainR.gain.setValueAtTime(1 - balance, ctx.currentTime);
+
+      // Phase shift only if frequencies are equal
+      if (delayR) {
+        if (freqL === freqR) {
+          const phaseSec = phaseDeg / 360 / freqR;
+          delayR.delayTime.setValueAtTime(phaseSec, ctx.currentTime);
+        } else {
+          delayR.delayTime.setValueAtTime(0, ctx.currentTime);
+        }
+      }
     }
 
     document.getElementById('lockFreq').onchange = (e) => {
@@ -228,6 +329,14 @@
         phaseRow.classList.remove('inactive');
       }
     }
+
+    // Live updates on input
+    ['freqL','freqR','phaseShift','balance'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        updateAudioParams();
+        updateInactiveStates();
+      });
+    });
   </script>
 </body>
 </html>
