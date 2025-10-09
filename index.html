@@ -33,6 +33,43 @@
       margin-top: 5px;
     }
 
+    .panel-section {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      border: 2px solid #333;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 10px 0;
+      background-color: #1a1a1a;
+      box-shadow: inset 0 1px 2px #000, inset 0 -1px 2px #444;
+    }
+
+    .panel-section label {
+      display: block;
+      font-size: 14px;
+      color: #aaa;
+      margin-bottom: 6px;
+      text-align: left;
+    }
+
+    .channel {
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 6px;
+      margin: 4px;
+      background-color: #222;
+      box-shadow: inset 0 1px 1px #000, inset 0 -1px 1px #555;
+    }
+
+    .channel-label {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+
+
     button {
       background-color: #ff0;
       border: 2px solid #aa0;
@@ -126,9 +163,45 @@
       color: #fff;
     }
 
+    #phaseShift {
+      width: 60px; /* match frequency inputs */
+    }
+
+    /* Hide native checkbox */
+    input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      background-color: #222;
+      border: 2px solid #666;
+      border-radius: 4px;
+      width: 20px;
+      height: 20px;
+      position: relative;
+      cursor: pointer;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    /* Checked state */
+    input[type="checkbox"]:checked {
+      background-color: #ff0;
+      border-color: #aa0;
+      box-shadow: inset 0 0 3px #660;
+    }
+
+    /* Optional checkmark */
+    input[type="checkbox"]:checked::after {
+      content: "✔";
+      position: absolute;
+      top: -2px;
+      left: 2px;
+      font-size: 16px;
+      color: #000;
+    }
+
     /* Portrait (default) already handled by current flex-column layout */
     /* Landscape adjustments */
-    @media (orientation: landscape) {
+    @media (orientation: landscape) and (max-width: 900px) {
       body {
         max-width: none; /* allow full width in landscape */
       }
@@ -145,13 +218,56 @@
         margin-right: 10px;
       }
 
+      /* Keep button clusters tight */
       .control-group {
-        flex: 1;
         justify-content: flex-start;
+        gap: 4px; /* small gap, not full spread */
       }
 
       #startStopBtn {
         max-width: 300px;
+      }
+
+      .channel {
+        flex: 1;
+        margin: 0 5px;
+      }
+
+      .panel-section {
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+      }
+
+      /* Special case for lock row */
+      .panel-section.lock-row {
+        flex-direction: row;
+        justify-content: flex-start;
+      }
+
+      .panel-section.lock-row label {
+        flex: none;
+        margin: 0;
+        text-align: left;
+      }
+
+      #phaseRow .control-group {
+        justify-content: flex-start;
+        gap: 4px;
+      }
+
+      h2 { display: none; }
+
+      .panel-section label {
+        flex: 0 0 100px;   /* fixed width label column */
+        margin: 0 10px 0 0;
+        text-align: left;
+      }
+
+      .panel-section .control-group,
+      .panel-section input[type="range"],
+      .panel-section input[type="number"] {
+        flex: 1;
       }
     }
 
@@ -161,17 +277,19 @@
   <h2>Stereo Signal Generator</h2>
 
   <!-- Frequency Row -->
-  <div class="row">
+  <div class="panel-section">
     <label>Frequency</label>
     <div class="control-group">
-      <div>
+      <div class="channel">
+        <!-- Left frequency controls -->
         <button onclick="adjust('freqL', -10)">-10</button>
         <button onclick="adjust('freqL', -1)">-1</button>
         <input type="number" id="freqL" value="100" min="20" max="300">
         <button onclick="adjust('freqL', 1)">+1</button>
         <button onclick="adjust('freqL', 10)">+10</button>
       </div>
-      <div id="freqRGroup">
+      <div class="channel" id="freqRGroup">
+        <!-- Right frequency controls -->
         <button onclick="adjust('freqR', -10)">-10</button>
         <button onclick="adjust('freqR', -1)">-1</button>
         <input type="number" id="freqR" value="100" min="20" max="300">
@@ -182,12 +300,12 @@
   </div>
 
   <!-- Lock Frequencies -->
-  <div class="row">
+  <div class="panel-section lock-row">
     <label><input type="checkbox" id="lockFreq"> Lock Frequencies</label>
   </div>
 
   <!-- Phase Shift -->
-  <div class="row" id="phaseRow">
+  <div class="panel-section" id="phaseRow">
     <label>Phase Shift (°)</label>
     <div class="control-group">
       <button onclick="adjust('phaseShift', -10)">-10</button>
@@ -199,17 +317,16 @@
   </div>
 
   <!-- Balance -->
-  <div class="row">
+  <div class="panel-section">
     <label>Balance (L/R)</label>
     <input type="range" id="balance" min="0" max="1" step="0.01" value="0.5">
   </div>
 
   <!-- Start/Stop -->
-  <div class="row">
+  <div class="panel-section">
     <button id="startStopBtn" onclick="toggleOscillators()">Start</button>
   </div>
 
-  
   <!-- Safety Modal -->
   <div id="safetyModal" class="modal">
     <div class="modal-content">
