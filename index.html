@@ -126,6 +126,35 @@
       color: #fff;
     }
 
+    /* Portrait (default) already handled by current flex-column layout */
+    /* Landscape adjustments */
+    @media (orientation: landscape) {
+      body {
+        max-width: none; /* allow full width in landscape */
+      }
+
+      .row {
+        flex-direction: row;
+        justify-content: space-around;
+        align-items: center;
+      }
+
+      .row label {
+        flex: 0 0 120px; /* fixed label width */
+        text-align: right;
+        margin-right: 10px;
+      }
+
+      .control-group {
+        flex: 1;
+        justify-content: flex-start;
+      }
+
+      #startStopBtn {
+        max-width: 300px;
+      }
+    }
+
   </style>
 </head>
 <body>
