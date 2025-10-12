@@ -201,7 +201,7 @@
 
     /* Portrait (default) already handled by current flex-column layout */
     /* Landscape adjustments */
-    @media (orientation: landscape) and (max-width: 900px) {
+    @media (orientation: landscape) and (pointer: coarse) {
       body {
         max-width: none; /* allow full width in landscape */
       }
@@ -231,6 +231,14 @@
       .channel {
         flex: 1;
         margin: 0 5px;
+        display: flex;
+        flex-direction: row;
+        gap: 4px;
+        width: 100%;
+      }
+
+      .channel input[type="number"] {
+        min-width: 55px;             /* was 60; small savings */
       }
 
       .panel-section {
@@ -248,6 +256,7 @@
       .panel-section.lock-row label {
         flex: none;
         margin: 0;
+        width: 200px;
         text-align: left;
       }
 
@@ -259,15 +268,88 @@
       h2 { display: none; }
 
       .panel-section label {
-        flex: 0 0 100px;   /* fixed width label column */
-        margin: 0 10px 0 0;
+        font-size: 17px;
+        width: 30px;
         text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* Specific label overrides */
+      #freqLabel::after {
+        content: "f";
+      }
+
+      #phaseLabel::after {
+        content: "Δφ";
+      }
+
+      #balanceLabel::after {
+        content: "L/R";
+      }
+
+      /* Hide original label text */
+      #freqLabel,
+      #phaseLabel,
+      #balanceLabel {
+        color: transparent;
+        position: relative;
+      }
+
+      #freqLabel::after,
+      #phaseLabel::after,
+      #balanceLabel::after {
+        color: #aaa;
+        position: absolute;
+        left: 0;
+        top: 0;
       }
 
       .panel-section .control-group,
       .panel-section input[type="range"],
       .panel-section input[type="number"] {
         flex: 1;
+      }
+    }
+
+    @media (pointer: coarse) {
+      body { font-size: 17px; }
+    }
+
+    @media (orientation: landscape) and (max-height: 400px) {
+      body {
+        padding: 4px;
+      }
+
+      .panel-section {
+        margin: 6px 0;
+        padding: 6px;
+      }
+
+      .control-group {
+        gap: 3px;
+        margin-top: 2px;
+      }
+
+      button {
+        padding: 8px;
+        min-width: 45px;
+        font-size: 14px;
+      }
+
+      input[type="number"] {
+        font-size: 18px;
+        padding: 4px;
+      }
+
+      input[type="range"] {
+        margin-top: 2px;
+      }
+
+      #startStopBtn {
+        padding: 10px;
+        font-size: 16px;
       }
     }
 
@@ -278,7 +360,7 @@
 
   <!-- Frequency Row -->
   <div class="panel-section">
-    <label>Frequency</label>
+    <label id="freqLabel">Frequency</label>
     <div class="control-group">
       <div class="channel">
         <!-- Left frequency controls -->
@@ -306,7 +388,7 @@
 
   <!-- Phase Shift -->
   <div class="panel-section" id="phaseRow">
-    <label>Phase Shift (°)</label>
+    <label id="phaseLabel">Phase Shift (°)</label>
     <div class="control-group">
       <button onclick="adjust('phaseShift', -10)">-10</button>
       <button onclick="adjust('phaseShift', -1)">-1</button>
@@ -318,7 +400,7 @@
 
   <!-- Balance -->
   <div class="panel-section">
-    <label>Balance (L/R)</label>
+    <label id="balanceLabel">Balance (L/R)</label>
     <input type="range" id="balance" min="0" max="1" step="0.01" value="0.5">
   </div>
 
