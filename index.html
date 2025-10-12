@@ -425,7 +425,7 @@
 
   <script>
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    let oscL, oscR, gainL, gainR, merger, delayR;
+    let oscL, oscR, gainL, gainR, merger, delayL, delayR;
     let isRunning = false;
 
     // Safety modal logic
@@ -477,6 +477,7 @@
       oscR = ctx.createOscillator();
       gainL = ctx.createGain();
       gainR = ctx.createGain();
+      delayL = ctx.createDelay(1.0); // up to 1 second delay
       delayR = ctx.createDelay(1.0); // up to 1 second delay
       merger = ctx.createChannelMerger(2);
 
@@ -484,7 +485,7 @@
       updateAudioParams(true);
 
       // Routing
-      oscL.connect(gainL).connect(merger, 0, 0);
+      oscL.connect(gainL).connect(delayL).connect(merger, 0, 0);
       oscR.connect(gainR).connect(delayR).connect(merger, 0, 1);
       merger.connect(ctx.destination);
 
@@ -518,18 +519,28 @@
       const phaseDeg = parseFloat(document.getElementById('phaseShift').value);
       const balance = parseFloat(document.getElementById('balance').value);
 
+      const volumeL = balance >= 0.5 ? 2 - (balance * 2) : 1;
+      const volumeR = balance <= 0.5 ? balance * 2 : 1;
+
       if (oscL) oscL.frequency.setValueAtTime(freqL, ctx.currentTime);
       if (oscR) oscR.frequency.setValueAtTime(freqR, ctx.currentTime);
 
-      if (gainL) gainL.gain.setValueAtTime(balance, ctx.currentTime);
-      if (gainR) gainR.gain.setValueAtTime(1 - balance, ctx.currentTime);
+      if (gainL) gainL.gain.setValueAtTime(volumeL, ctx.currentTime);
+      if (gainR) gainR.gain.setValueAtTime(volumeR, ctx.currentTime);
 
       // Phase shift only if frequencies are equal
-      if (delayR) {
+      if (delayL && delayR) {
         if (freqL === freqR) {
           const phaseSec = phaseDeg / 360 / freqR;
-          delayR.delayTime.setValueAtTime(phaseSec, ctx.currentTime);
+          if (0 <= phaseSec) {
+            delayL.delayTime.setValueAtTime(0, ctx.currentTime);
+            delayR.delayTime.setValueAtTime(phaseSec, ctx.currentTime);
+          } else {
+            delayL.delayTime.setValueAtTime(-phaseSec, ctx.currentTime);
+            delayR.delayTime.setValueAtTime(0, ctx.currentTime);
+          }
         } else {
+          delayL.delayTime.setValueAtTime(0, ctx.currentTime);
           delayR.delayTime.setValueAtTime(0, ctx.currentTime);
         }
       }
